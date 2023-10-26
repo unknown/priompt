@@ -98,7 +98,7 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 			relativePriority,
 		};
 	}
-	if (!(typeof tag === 'string')) {
+	if (typeof tag !== 'string') {
 		throw new Error(`tag must be a string or a function, got ${tag}`);
 	}
 
@@ -154,17 +154,13 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 			}
 		case 'first':
 			{
-				const newChildren: Scope[] = [];
 				// assert that all children are scopes
-				for (const child of children.flat()) {
-					if (child === null || typeof child !== 'object') {
+				const newChildren: Scope[] = children.flat().map((child) => {
+					if (child === null || typeof child !== 'object' || child.type !== 'scope') {
 						throw new Error(`first tag must have only scope children, got ${child}`);
 					}
-					if (child.type !== 'scope') {
-						throw new Error(`first tag must have only scope children, got ${child}`);
-					}
-					newChildren.push(child);
-				}
+					return child;
+				});
 				return {
 					type: 'first',
 					children: newChildren,
