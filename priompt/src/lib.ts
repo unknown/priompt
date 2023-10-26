@@ -84,13 +84,18 @@ function sumPrompts(a: RenderedPrompt | undefined, b: RenderedPrompt | undefined
 }
 
 export function createElement(tag: ((props: BaseProps & Record<string, unknown>) => PromptElement) | string, props: Record<string, unknown> | null, ...children: PromptElement[]): PromptElement {
+	const absolutePriority = (typeof props?.p === 'number') ? props.p : undefined;
+	const relativePriority = (typeof props?.prel === 'number') ? props.prel : undefined;
+	const onEject = typeof props?.onEject === 'function' ? props.onEject as () => void : undefined;
+	const onInclude = typeof props?.onInclude === 'function' ? props.onInclude as () => void : undefined;
+
 	if (typeof tag === 'function') {
 		// we scope each tag so we can add priorities to it
 		return {
 			type: 'scope',
-			children: [tag({ ...props, children: children })].flat(),
-			absolutePriority: (props && typeof props.p === 'number') ? props.p : undefined,
-			relativePriority: (props && typeof props.prel === 'number') ? props.prel : undefined
+			children: [tag({ ...props, children })].flat(),
+			absolutePriority,
+			relativePriority,
 		};
 	}
 	if (!(typeof tag === 'string')) {
@@ -103,10 +108,10 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 				return {
 					type: 'scope',
 					children: children.flat(),
-					relativePriority: (props && typeof props.prel === 'number') ? props.prel : undefined,
-					absolutePriority: (props && typeof props.p === 'number') ? props.p : undefined,
-					onEject: props && typeof props.onEject === 'function' ? props.onEject as () => void : undefined,
-					onInclude: props && typeof props.onInclude === 'function' ? props.onInclude as () => void : undefined,
+					absolutePriority,
+					relativePriority,
+					onEject,
+					onInclude,
 				};
 			}
 		case 'br':
@@ -117,8 +122,8 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 				return {
 					type: 'scope',
 					children: ['\n'],
-					absolutePriority: (props && typeof props.p === 'number') ? props.p : undefined,
-					relativePriority: (props && typeof props.prel === 'number') ? props.prel : undefined
+					absolutePriority,
+					relativePriority,
 				};
 			}
 		case 'breaktoken':
@@ -131,8 +136,8 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 					children: [{
 						type: 'breaktoken',
 					}],
-					absolutePriority: (props && typeof props.p === 'number') ? props.p : undefined,
-					relativePriority: (props && typeof props.prel === 'number') ? props.prel : undefined
+					absolutePriority,
+					relativePriority,
 				};
 			}
 		case 'hr':
@@ -143,8 +148,8 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 				return {
 					type: 'scope',
 					children: ['\n\n-------\n\n'],
-					absolutePriority: (props && typeof props.p === 'number') ? props.p : undefined,
-					relativePriority: (props && typeof props.prel === 'number') ? props.prel : undefined
+					absolutePriority,
+					relativePriority,
 				};
 			}
 		case 'first':
@@ -163,8 +168,8 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 				return {
 					type: 'first',
 					children: newChildren,
-					onEject: props && typeof props.onEject === 'function' ? props.onEject as () => void : undefined,
-					onInclude: props && typeof props.onInclude === 'function' ? props.onInclude as () => void : undefined,
+					onEject,
+					onInclude,
 				};
 			}
 		case 'empty':
@@ -182,8 +187,8 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 						type: 'empty',
 						tokenCount: props.tokens,
 					}],
-					absolutePriority: (typeof props.p === 'number') ? props.p : undefined,
-					relativePriority: (typeof props.prel === 'number') ? props.prel : undefined
+					absolutePriority,
+					relativePriority,
 				};
 			}
 		case 'isolate':
@@ -201,8 +206,8 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 						cachedRenderOutput: undefined,
 						children: children.flat(),
 					}],
-					absolutePriority: (typeof props.p === 'number') ? props.p : undefined,
-					relativePriority: (typeof props.prel === 'number') ? props.prel : undefined
+					absolutePriority,
+					relativePriority,
 				};
 			}
 		case 'capture':
@@ -210,23 +215,25 @@ export function createElement(tag: ((props: BaseProps & Record<string, unknown>)
 				if (children.length > 0) {
 					throw new Error(`capture tag must have no children, got ${children}`);
 				}
-				if (!props || ('onOutput' in props && typeof props.onOutput !== 'function')) {
+				if (props?.onOutput === undefined && props?.onStream === undefined) {
+					throw new Error("capture tag must have either an onOutput prop or an onStream prop");
+				}
+				if (props.onOutput && typeof props.onOutput !== 'function') {
 					throw new Error(`capture tag must have an onOutput prop that's a function, got ${props}`);
 				}
-				if ('onStream' in props && typeof props.onStream !== 'function') {
-					throw new Error(`capture tag must have an onStream prop and it must be a function, got ${props}`);
+				if (props.onStream && typeof props.onStream !== 'function') {
+					throw new Error(`capture tag must have an onStream prop that's a function, got ${props}`);
 				}
-
 
 				return {
 					type: 'scope',
 					children: [{
 						type: 'capture',
-						onOutput: ('onOutput' in props && props.onOutput !== undefined) ? props.onOutput as OutputHandler<ChatCompletionResponseMessage> : undefined,
-						onStream: ('onStream' in props && props.onStream !== undefined) ? props.onStream as OutputHandler<AsyncIterable<ChatCompletionResponseMessage>> : undefined,
+						onOutput: (props.onOutput !== undefined) ? props.onOutput as OutputHandler<ChatCompletionResponseMessage> : undefined,
+						onStream: (props.onStream !== undefined) ? props.onStream as OutputHandler<AsyncIterable<ChatCompletionResponseMessage>> : undefined,
 					}],
-					absolutePriority: (typeof props.p === 'number') ? props.p : undefined,
-					relativePriority: (typeof props.prel === 'number') ? props.prel : undefined
+					absolutePriority,
+					relativePriority,
 				};
 			}
 		default:
