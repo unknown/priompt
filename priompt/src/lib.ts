@@ -290,16 +290,10 @@ export async function renderun<
 	// create an output catcher
 	const outputCatcher = NewOutputCatcher<ReturnT>();
 
-	const baseProps: Omit<BasePromptProps<PropsT>, "onReturn"> = props;
-
-	const returnProps: ReturnProps<ReturnT> = {
-		onReturn: (x) => outputCatcher.onOutput(x),
-	};
-
 	// this is fine because onOutput will get overridden
 	const realProps: PromptProps<PropsT, ReturnT> = {
-		...baseProps,
-		...returnProps,
+		...props,
+		onReturn: (x) => outputCatcher.onOutput(x),
 	} as PromptProps<PropsT, ReturnT>;
 
 	PreviewManager.maybeDump<PropsT, ReturnT>(prompt, props);
